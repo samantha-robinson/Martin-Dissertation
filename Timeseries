@@ -1,0 +1,98 @@
+#%%
+# visualize data 
+
+import nibabel as nib
+
+# load the NIfTI file
+file_path = r"C:\Users\saman\OneDrive\Desktop\year_3\3rd Year Dissertation Project\timeseries_session01_run03.nii"
+img = nib.load(file_path)
+
+# get data shape
+data = img.get_fdata()
+print("Data Shape:", data.shape)
+
+#%%
+# load file 
+
+import nibabel as nib
+import numpy as np
+import matplotlib.pyplot as plt
+
+# load the NIfTI file
+file_path = r"C:\Users\saman\OneDrive\Desktop\year_3\3rd Year Dissertation Project\timeseries_session01_run03.nii"
+img = nib.load(file_path)
+data = img.get_fdata()
+
+# print data shape
+print("fMRI Data Shape:", data.shape)  # Expected: (X, Y, Z, T)
+
+#%%
+from nilearn import datasets
+
+atlas = datasets.fetch_atlas_harvard_oxford('cort-maxprob-thr25-1mm')
+
+# print to check if atlas.maps is a valid path
+print("Atlas Path:", atlas.maps)  # Should be a .nii or .nii.gz file path
+
+#%%
+import nibabel as nib
+
+# check the type of atlas.maps
+print(type(atlas.maps))
+
+# maybe Nifti1image
+if isinstance(atlas.maps, nib.Nifti1Image):
+    atlas_img = atlas.maps  # Already a Nifti image
+else:
+    atlas_img = nib.load(atlas.maps)  # Load only if it's a file path
+
+# convert to a NumPy array
+atlas_data = atlas_img.get_fdata()
+
+# print shape to confirm it's 3D
+print("Atlas Shape:", atlas_data.shape)
+
+#%%
+import numpy as np
+
+# define occipital lobe region indices (adjust if needed)
+occipital_roi_indices = [47, 48, 49, 50]
+
+# create a binary mask: True for occipital lobe, False elsewhere
+occipital_mask = np.isin(atlas_data, occipital_roi_indices)
+
+# convert to NIfTI
+occipital_mask_img = nib.Nifti1Image(occipital_mask.astype(np.uint8), atlas_img.affine)
+
+#%%
+from nilearn import plotting
+
+plotting.plot_roi(occipital_mask_img, title="Occipital Lobe Mask")
+plotting.show()
+
+#%%
+# ensure the fMRI data and atlas have the same shape
+from nilearn.image import resample_to_img
+
+# resample atlas to match fMRI data
+resampled_atlas = resample_to_img(atlas_img, img, interpolation='nearest')
+resampled_mask = np.isin(resampled_atlas.get_fdata(), occipital_roi_indices)
+
+# apply mask and extract voxel time series
+masked_data = data[resampled_mask]
+mean_time_series = masked_data.mean(axis=0)  # Average across voxels
+
+# plot the time series
+plt.figure(figsize=(10, 5))
+plt.plot(mean_time_series, label="Occipital Lobe Signal")
+plt.xlabel("Time Points")
+plt.ylabel("Signal Intensity")
+plt.title("Mean fMRI Time Series from Occipital Lobe")
+plt.legend()
+plt.show()
+
+#%%
+
+# Save the extracted time series as a .npy file
+np.save("time_series.npy", mean_time_series)
+print("Time series saved as time_series.npy")

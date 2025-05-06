@@ -1,0 +1,42 @@
+import numpy as np
+import pandas as pd
+from nilearn.glm.first_level import make_first_level_design_matrix
+
+# define fMRI scan parameters 
+tr = 1.333  # repetition time in seconds
+n_scans = 226  # total number of fMRI volumes per run
+frame_times = np.arange(n_scans) * tr  # time points for each volume
+
+# define stimulus presentation details 
+stimulus_duration = 3  # stimulus duration in seconds
+isi = 1  # inter-stimulus interval in seconds
+trial_duration = stimulus_duration + isi  # total trial duration (3s + 1s = 4s)
+
+# compute number of stimuli in the experiment
+total_experiment_time = n_scans * tr  # total duration of the run
+n_stimuli = int(total_experiment_time // trial_duration)  # number of stimuli
+
+# generate onset times
+onsets = np.arange(n_stimuli) * trial_duration  # stimuli occur every 4 seconds
+
+# create an event file
+events = pd.DataFrame({
+    'onset': onsets,  
+    'duration': [stimulus_duration] * n_stimuli,  
+    'trial_type': ['stimulus'] * n_stimuli 
+})
+
+# generate the design matrix 
+design_matrix = make_first_level_design_matrix(frame_times, events, hrf_model='spm')
+
+# save the design matrix
+# save as a NumPy (.npy) file
+np.save("design_matrix.npy", design_matrix.to_numpy())
+
+# save as a CSV file for easy viewing
+design_matrix.to_csv("design_matrix.csv", index=False)
+
+#%%
+
+print("Design matrix saved successfully!")
+print("Matrix shape:", design_matrix.shape)

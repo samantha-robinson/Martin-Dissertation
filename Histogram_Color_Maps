@@ -1,0 +1,39 @@
+import nibabel as nib 
+import numpy as np 
+from nilearn import datasets
+from nilearn import plotting
+
+#Load the MGH file 
+img = nib.freesurfer.mghformat.load(r"C:\Users\saman\OneDrive\Desktop\year_3\3rd Year Dissertation Project\local\rh.betas_session01.mgh")
+
+#Get data as a numpy array 
+data = img.get_fdata()
+
+#Compute mean across time axis 
+mean_data = np.mean(data, axis=-1)
+
+#Create a new MGH image with the mean data 
+mean_img = nib.MGHImage(mean_data, img.affine, img.header)
+
+# Fetch the fsaverage surface 
+fsaverage = datasets.fetch_surf_fsaverage(mesh="fsaverage")
+
+#%% 
+#Plot on fsaverage right hemisphere 
+
+import matplotlib.pyplot as plt 
+
+plotting.plot_surf_stat_map(
+    fsaverage.infl_left, 
+    mean_data,
+    hemi="left",
+    view='ventral',
+    colorbar=True,
+    threshold=0.1, 
+    cmap="rainbow",
+    vmin=-1.5,
+    vmax=1.5,
+    title="Mean Signal on fsaverage Left Hemisphere Ventral")
+
+fig = plt.gcf()
+fig.set_size_inches(12,10)

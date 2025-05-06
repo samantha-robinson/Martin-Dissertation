@@ -1,0 +1,56 @@
+#%%
+import nibabel as nib
+import numpy as np
+import matplotlib.pyplot as plt
+from nilearn import datasets, image
+
+# load the Harvard-Oxford occipital mask
+atlas = datasets.fetch_atlas_harvard_oxford('cort-maxprob-thr25-1mm')
+atlas_img = nib.load(atlas.filename)
+occipital_labels = [10, 11, 21, 22, 23]  # occipital ROIs
+atlas_data = atlas_img.get_fdata()
+occipital_mask = np.isin(atlas_data, occipital_labels)
+
+# file paths for the 3 beta maps
+beta_files = {
+    "AssumeHRF": r"D:\betas_session01.nii",
+    "FitHRF": r"D:\betas_session01b2 (1).nii\betas_session01b2 (1).nii",
+    "GLMdenoise": r"D:\betas_session01b3(2).nii\betas_session01b3(2).nii"
+}
+#%%
+# load reference beta image to resample mask
+ref_img = nib.load(next(iter(beta_files.values())))
+resampled_mask = image.resample_to_img(atlas_img, ref_img, interpolation='nearest')
+resampled_mask_data = resampled_mask.get_fdata()
+resampled_occipital_mask = np.isin(resampled_mask_data, occipital_labels)
+
+# choose beta indices 
+beta_indices = list(range(10))
+
+# extract beta values per model
+model_betas = {}
+for label, path in beta_files.items():
+    img = nib.load(path)
+    data = img.get_fdata(dtype=np.float32)  
+    
+    if data.shape[:3] != resampled_occipital_mask.shape:
+        raise ValueError(f"Shape mismatch for {label}")
+    
+    masked_voxels = data[resampled_occipital_mask]  # shape: (n_voxels, n_betas)
+    selected_betas = masked_voxels[:, beta_indices]  # select specific betas
+    model_betas[label] = selected_betas  # shape: (n_voxels, len(beta_indices))
+    
+    #%%
+
+# compare -- plot voxelwise beta values
+# plot voxel values for the first beta index
+plt.figure(figsize=(10, 6))
+for label in model_betas:
+    plt.plot(model_betas[label][:, 0], '.', label=label, alpha=0.7)
+
+plt.xlabel("Voxel Index (within occipital mask)")
+plt.ylabel("Beta Weight (Beta 0)")
+plt.title("Comparison of Beta Weights Across GLM Methods (Beta 0)")
+plt.legend()
+plt.tight_layout()
+plt.show()
